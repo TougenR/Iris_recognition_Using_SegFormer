@@ -1,12 +1,12 @@
 {
   "project_name": "iris-segmentation-ubiris",
-  "run_name": "segformer-b2-a100-colab",
+  "run_name": "segformer-b1-a100-colab",
   "tags": ["segformer", "iris", "segmentation", "ubiris", "boundary", "a100", "colab"],
   "seed": 42,
   
   "data": {
     "dataset_root": "dataset",
-    "batch_size": 16,
+    "batch_size": 32,
     "num_workers": 8,
     "use_subject_split": true,
     "preserve_aspect": false,
@@ -14,7 +14,7 @@
   },
   
   "model": {
-    "model_name": "nvidia/segformer-b2-finetuned-ade-512-512",
+    "model_name": "nvidia/segformer-b1-finetuned-ade-512-512",
     "model_type": "enhanced",
     "num_labels": 2,
     "add_boundary_head": true,

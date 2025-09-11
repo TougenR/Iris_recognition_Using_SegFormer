@@ -18,6 +18,7 @@ from models import create_model
 from losses import create_loss_function
 from evaluation.metrics import IrisSegmentationMetrics, AverageMeter
 from data.dataset import UbirisDataset
+from utils.wandb_confusion_matrix import log_confusion_matrix_from_metrics, create_wandb_metrics_dashboard
 
 
 class IrisSegmentationTrainer:
@@ -340,11 +341,30 @@ class IrisSegmentationTrainer:
             
             # Log to wandb
             if self.use_wandb:
-                log_dict = {}
-                log_dict.update({f'train/{k}': v for k, v in train_metrics.items()})
-                log_dict.update({f'val/{k}': v for k, v in val_metrics.items()})
-                log_dict['epoch'] = epoch + 1
-                wandb.log(log_dict)
+                # Create comprehensive metrics dashboard
+                create_wandb_metrics_dashboard(
+                    train_metrics=train_metrics,
+                    val_metrics=val_metrics,
+                    epoch=epoch + 1
+                )
+                
+                # Log confusion matrices every 10 epochs or at the end
+                if (epoch + 1) % 10 == 0 or (epoch + 1) == self.config['training']['num_epochs']:
+                    # Log validation confusion matrix
+                    log_confusion_matrix_from_metrics(
+                        metrics_obj=self.val_metrics,
+                        epoch=epoch + 1,
+                        phase="validation",
+                        class_names=['Background/Pupil', 'Iris']
+                    )
+                    
+                    # Log training confusion matrix
+                    log_confusion_matrix_from_metrics(
+                        metrics_obj=self.train_metrics,
+                        epoch=epoch + 1,
+                        phase="training",
+                        class_names=['Background/Pupil', 'Iris']
+                    )
             
             # Check for improvement
             current_metric = val_metrics['mean_iou']
