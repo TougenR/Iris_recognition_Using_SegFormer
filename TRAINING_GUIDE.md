@@ -27,6 +27,13 @@ python train.py --epochs 160 --batch-size 8 --wandb
 python train.py --config configs/segformer_iris_config.json --wandb
 ```
 
+### 4. Resume Training (Automatic)
+Training automatically resumes from the last checkpoint if available:
+```bash
+# Will automatically find and resume from outputs/checkpoints/last.pt
+python train.py --epochs 160 --batch-size 8 --wandb
+```
+
 ## 📁 Project Structure
 
 ```
@@ -45,6 +52,11 @@ iris_recognition/
 ├── dataset/                         # UBIRIS V2 data
 │   ├── images/
 │   └── masks/
+├── outputs/                        # Auto-created training outputs
+│   └── checkpoints/
+│       ├── last.pt                 # Latest checkpoint (auto-resume)
+│       ├── best.pt                 # Best model checkpoint
+│       └── epoch_*.pth            # Periodic checkpoints
 ├── train.py                        # Training entry point
 ├── requirements.txt                # Python dependencies
 └── TRAINING_GUIDE.md              # This file
@@ -99,6 +111,13 @@ Loss = 0.5 * CE(weighted) + 0.5 * Dice + 0.25 * BoundaryIoU
 - **Batch Size**: 8 (auto-adjusted based on GPU memory)
 - **Epochs**: 160 with early stopping (patience=15)
 - **Mixed Precision**: Enabled for memory efficiency
+- **Auto-Resume**: Automatically resumes from last.pt if available
+
+### 7. **Checkpoint Management**
+- **Auto-Creation**: Output directories created automatically
+- **last.pt**: Saved after every epoch for resume capability
+- **best.pt**: Best performing model saved automatically
+- **epoch_*.pth**: Periodic checkpoints every 50 epochs
 
 ## 📊 Training Configuration Details
 
@@ -153,10 +172,11 @@ Loss = 0.5 * CE(weighted) + 0.5 * Dice + 0.25 * BoundaryIoU
 # - Model parameters and gradients
 ```
 
-### Early Stopping
+### Early Stopping & Resume
 - **Monitor**: Validation mIoU
 - **Patience**: 15 epochs
 - **Direction**: Maximize
+- **Auto-Resume**: Training resumes from last.pt automatically if training is interrupted
 
 ## 🎮 Usage Examples
 
@@ -191,6 +211,18 @@ trainer = IrisSegmentationTrainer(config)
 trainer.train(train_loader, val_loader)
 ```
 
+### Resume from Checkpoint
+```python
+# Manual checkpoint loading (if needed)
+trainer = IrisSegmentationTrainer(
+    config, 
+    resume_from='outputs/checkpoints/last.pt'
+)
+trainer.train(train_loader, val_loader)
+
+# Note: Auto-resume happens by default when using train.py
+```
+
 ## 🔧 Troubleshooting
 
 ### Common Issues
@@ -223,7 +255,20 @@ ls -la dataset/
 # Should show: images/ and masks/ directories
 ```
 
-#### 5. **Slow Training**
+#### 5. **Training Interrupted**
+```bash
+# Training automatically resumes from last.pt
+python train.py --epochs 160 --batch-size 8 --wandb
+# ✅ Will automatically find and resume from outputs/checkpoints/last.pt
+```
+
+#### 6. **Missing Output Directory**
+```bash
+# Output directories are created automatically
+# No manual creation needed - the system handles this
+```
+
+#### 7. **Slow Training**
 ```bash
 # Increase number of workers
 python train.py --config configs/segformer_iris_config.json
@@ -307,8 +352,9 @@ import tensorrt as trt
 2. **Monitor Closely**: Watch for overfitting in first 20 epochs
 3. **Adjust Learning Rate**: If loss plateaus, try 1e-5 or 5e-5
 4. **Use Early Stopping**: Don't overtrain
-5. **Save Regularly**: Checkpoints every 25 epochs
+5. **Auto-Resume**: Training resumes automatically - no need to worry about interruptions
 6. **Visualize Results**: Check sample predictions regularly
+7. **Checkpoint Management**: System automatically saves last.pt and best.pt
 
 ## 📞 Support
 

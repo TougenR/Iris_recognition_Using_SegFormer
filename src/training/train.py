@@ -103,11 +103,25 @@ def main(config: Dict[str, Any], use_wandb: bool = True):
     # Create dataloaders
     dataloaders = create_dataloaders(config)
     
+    # Ensure output directory exists before checking for checkpoints
+    output_dir = Path(config.get('output_dir', 'outputs'))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / 'checkpoints').mkdir(exist_ok=True)
+    print(f"📁 Output directory ensured: {output_dir}")
+    
+    # Check for existing checkpoint to resume from
+    resume_from = None
+    last_checkpoint = output_dir / 'checkpoints' / 'last.pt'
+    if last_checkpoint.exists():
+        print(f"🔄 Found existing checkpoint: {last_checkpoint}")
+        resume_from = str(last_checkpoint)
+    
     # Create trainer
     trainer = IrisSegmentationTrainer(
         config=config,
         device=device,
-        use_wandb=use_wandb
+        use_wandb=use_wandb,
+        resume_from=resume_from
     )
     
     # Start training

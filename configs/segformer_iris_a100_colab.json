@@ -1,0 +1,69 @@
+{
+  "project_name": "iris-segmentation-ubiris",
+  "run_name": "segformer-b2-a100-colab",
+  "tags": ["segformer", "iris", "segmentation", "ubiris", "boundary", "a100", "colab"],
+  "seed": 42,
+  
+  "data": {
+    "dataset_root": "dataset",
+    "batch_size": 16,
+    "num_workers": 8,
+    "use_subject_split": true,
+    "preserve_aspect": false,
+    "image_size": 512
+  },
+  
+  "model": {
+    "model_name": "nvidia/segformer-b2-finetuned-ade-512-512",
+    "model_type": "enhanced",
+    "num_labels": 2,
+    "add_boundary_head": true,
+    "freeze_encoder": true,
+    "freeze_epochs": 8
+  },
+  
+  "loss": {
+    "loss_type": "combined",
+    "ce_weight": 0.5,
+    "dice_weight": 0.5,
+    "boundary_weight": 0.25,
+    "aux_weight": 0.2,
+    "use_focal": false,
+    "focal_gamma": 2.0
+  },
+  
+  "optimizer": {
+    "base_lr": 2e-5,
+    "weight_decay": 0.01,
+    "betas": [0.9, 0.999],
+    "eps": 1e-8
+  },
+  
+  "scheduler": {
+    "type": "polynomial",
+    "warmup_steps": 500,
+    "power": 0.9
+  },
+  
+  "training": {
+    "num_epochs": 120,
+    "patience": 12,
+    "save_freq": 20,
+    "eval_freq": 1,
+    "log_freq": 50
+  },
+  
+  "num_classes": 2,
+  "class_distribution": [0.93, 0.07],
+  "class_names": ["background/pupil", "iris"],
+  
+  "output_dir": "outputs/segformer_iris_a100",
+  
+  "evaluation": {
+    "metrics": ["pixel_accuracy", "mean_iou", "mean_dice", "boundary_f1"],
+    "primary_metric": "mean_iou",
+    "save_predictions": true,
+    "save_failed_cases": true,
+    "iou_threshold": 0.8
+  }
+}

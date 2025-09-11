@@ -29,7 +29,8 @@ class IrisSegmentationTrainer:
         self,
         config: Dict[str, Any],
         device: torch.device = None,
-        use_wandb: bool = True
+        use_wandb: bool = True,
+        resume_from: str = None
     ):
         self.config = config
         self.device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -59,14 +60,18 @@ class IrisSegmentationTrainer:
         self.train_loss_meter = AverageMeter()
         self.val_loss_meter = AverageMeter()
         
+        # Create output directories
+        self.output_dir = Path(config.get('output_dir', 'outputs'))
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        (self.output_dir / 'checkpoints').mkdir(parents=True, exist_ok=True)
+        
+        # Load checkpoint if resuming
+        if resume_from:
+            self._load_checkpoint(resume_from)
+        
         # Setup logging
         if self.use_wandb:
             self._setup_wandb()
-        
-        # Create output directories
-        self.output_dir = Path(config.get('output_dir', 'outputs'))
-        self.output_dir.mkdir(exist_ok=True)
-        (self.output_dir / 'checkpoints').mkdir(exist_ok=True)
     
     def _create_model(self) -> nn.Module:
         """Create SegFormer model with enhancements"""
@@ -157,6 +162,31 @@ class IrisSegmentationTrainer:
         
         # Watch model
         wandb.watch(self.model, log_freq=100)
+    
+    def _load_checkpoint(self, checkpoint_path: str):
+        """Load checkpoint for resuming training"""
+        if not os.path.exists(checkpoint_path):
+            print(f"⚠️  Checkpoint not found: {checkpoint_path}")
+            return
+        
+        print(f"🔄 Loading checkpoint from {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        
+        # Load model state
+        self.model.load_state_dict(checkpoint['model_state_dict'])
+        
+        # Load optimizer state
+        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        
+        # Load scheduler state if available
+        if self.scheduler is not None and 'scheduler_state_dict' in checkpoint:
+            self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        
+        # Restore training state
+        self.current_epoch = checkpoint.get('epoch', 0)
+        self.best_metric = checkpoint.get('best_metric', 0.0)
+        
+        print(f"✅ Resumed from epoch {self.current_epoch}, best metric: {self.best_metric:.4f}")
     
     def train_epoch(self, train_loader: DataLoader) -> Dict[str, float]:
         """Train for one epoch"""
@@ -292,7 +322,7 @@ class IrisSegmentationTrainer:
         print(f"Train batches: {len(train_loader)}")
         print(f"Val batches: {len(val_loader)}")
         
-        for epoch in range(self.config['training']['num_epochs']):
+        for epoch in range(self.current_epoch, self.config['training']['num_epochs']):
             self.current_epoch = epoch
             
             # Train epoch
@@ -356,9 +386,13 @@ class IrisSegmentationTrainer:
         checkpoint_path = self.output_dir / 'checkpoints' / 'latest.pth'
         torch.save(checkpoint, checkpoint_path)
         
+        # Save last epoch checkpoint
+        last_path = self.output_dir / 'checkpoints' / 'last.pt'
+        torch.save(checkpoint, last_path)
+        
         # Save best checkpoint
         if is_best:
-            best_path = self.output_dir / 'checkpoints' / 'best.pth'
+            best_path = self.output_dir / 'checkpoints' / 'best.pt'
             torch.save(checkpoint, best_path)
             print(f"  💾 Best model saved to {best_path}")
         
