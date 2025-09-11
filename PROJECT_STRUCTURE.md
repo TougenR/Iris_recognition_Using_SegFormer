@@ -24,8 +24,8 @@ iris_recognition/
 │   │
 │   ├── 🤖 models/                   # Model architectures
 │   │   ├── __init__.py              # Models package exports
-│   │   ├── segformer.py             # Enhanced SegFormer implementations
-│   │   └── heads.py                 # Neural network heads (boundary, aux)
+│   │   └── models.py                # Enhanced SegFormer implementations
+│   │   
 │   │
 │   ├── 🏋️ training/                 # Training orchestration
 │   │   ├── __init__.py              # Training package exports

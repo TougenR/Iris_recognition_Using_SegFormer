@@ -1,6 +1,5 @@
 # Dataset
 dataset/
-data/
 
 # Logs and training artifacts
 wandb/
