@@ -90,19 +90,37 @@ class IrisSegmentationTrainer:
         return model
     
     def _create_loss_function(self) -> nn.Module:
-        """Create combined loss function"""
+        """Create combined loss function with automatic class weighting"""
         loss_config = self.config['loss']
         
-        # Calculate class weights from dataset statistics
+        # Try to load class weights from our utility
+        class_weights = None
+        weights_path = Path('class_weights.pt')
+        
+        if weights_path.exists():
+            try:
+                weights_info = torch.load(weights_path, map_location='cpu')
+                class_weights = weights_info['weight_tensor'].to(self.device)
+                print(f"✅ Loaded class weights: {class_weights}")
+                print(f"   Class 0 (background): {class_weights[0]:.4f}")
+                print(f"   Class 1 (iris): {class_weights[1]:.4f}")
+            except Exception as e:
+                print(f"⚠️  Failed to load class weights: {e}")
+        else:
+            print(f"⚠️  Class weights not found at {weights_path}")
+            print("   Run: python class_weights_util.py")
+        
+        # Fallback class distribution if weights not available
         if 'class_distribution' in self.config:
             class_dist = torch.tensor(self.config['class_distribution'])
         else:
-            # Default distribution (background: 93%, iris: 7%)
-            class_dist = torch.tensor([0.93, 0.07])
+            # Updated distribution based on our analysis (background: 94.7%, iris: 5.3%)
+            class_dist = torch.tensor([0.947, 0.053])
         
         criterion = create_loss_function(
             num_classes=self.config['num_classes'],
             class_distribution=class_dist,
+            class_weights=class_weights,  # Pass the calculated weights
             device=self.device,
             **loss_config
         )

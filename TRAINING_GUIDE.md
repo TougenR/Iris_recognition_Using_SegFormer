@@ -17,22 +17,70 @@ Complete implementation of SegFormer training for iris segmentation on UBIRIS V2
 pip install -r requirements.txt
 ```
 
-### 2. Quick Training (Recommended)
+### 2. Calculate Class Weights (IMPORTANT for good results)
+```bash
+# Run this BEFORE training to fix class imbalance
+python class_weights_util.py
+```
+
+### 3. Quick Training (Recommended)
 ```bash
 python train.py --epochs 160 --batch-size 8 --wandb
 ```
 
-### 3. Advanced Training with Config
+### 4. Advanced Training with Config
 ```bash
 python train.py --config configs/segformer_iris_config.json --wandb
 ```
 
-### 4. Resume Training (Automatic)
+### 5. Resume Training (Automatic)
 Training automatically resumes from the last checkpoint if available:
 ```bash
 # Will automatically find and resume from outputs/checkpoints/last.pt
 python train.py --epochs 160 --batch-size 8 --wandb
 ```
+
+## 🚨 Class Imbalance Fix (CRITICAL)
+
+### The Problem
+Iris segmentation datasets have severe class imbalance:
+- **Background/Pupil**: 94.7% of pixels
+- **Iris**: 5.3% of pixels
+
+This causes models to predict "all background" for better loss, resulting in poor iris segmentation.
+
+### The Solution
+**Automatic Class Weighting** - We've integrated an automatic class balancing system:
+
+#### 1. Calculate Optimal Weights
+```bash
+python class_weights_util.py
+```
+
+This analyzes your dataset and calculates optimal class weights:
+- **Background weight**: 0.53 (reduce importance)
+- **Iris weight**: 9.43 (greatly increase importance)
+
+#### 2. Training Pipeline Integration
+The training system automatically loads these weights:
+
+```python
+# Training automatically uses weights from class_weights.pt
+weights = torch.tensor([0.5280, 9.4296])  # [background, iris]
+criterion = nn.CrossEntropyLoss(weight=weights)
+```
+
+#### 3. Supported Loss Functions
+- **Weighted Cross-Entropy**: `nn.CrossEntropyLoss(weight=weights)`
+- **Focal Loss**: Handles hard examples + imbalance
+- **Dice Loss**: Excellent for segmentation
+- **Combined Loss**: CE + Dice + Boundary (recommended)
+
+#### 4. Expected Improvement
+- **Before**: Confusion matrix shows ~99% background predictions
+- **After**: Balanced predictions with proper iris segmentation
+
+**⚠️ IMPORTANT**: Run `python class_weights_util.py` before training for best results!
 
 ## 📁 Project Structure
 
@@ -248,7 +296,30 @@ python train.py
 pip install -r requirements.txt
 ```
 
-#### 4. **Dataset Not Found**
+#### 4. **Poor Confusion Matrix / All Background Predictions**
+```bash
+# CRITICAL FIX: Calculate class weights first
+python class_weights_util.py
+
+# Then verify data pipeline
+python debug_data_pipeline.py
+
+# Check that class_weights.pt exists and contains reasonable weights
+```
+
+**Root Causes:**
+- Severe class imbalance (94.7% background vs 5.3% iris)
+- Mask preprocessing issues (anti-aliasing)
+- Boundary transform misalignment
+- Missing class weights in loss function
+
+**Solution Applied:**
+✅ Threshold-based mask conversion (`mask > 127`)
+✅ Synchronized boundary transforms
+✅ Automatic class weight loading
+✅ Improved subject-aware data splitting
+
+#### 5. **Dataset Not Found**
 ```bash
 # Ensure dataset structure
 ls -la dataset/

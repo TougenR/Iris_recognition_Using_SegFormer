@@ -85,7 +85,7 @@ def get_training_transforms(image_size=512, p_flip=0.5):
     return A.Compose([
         # Geometric transforms (mild to preserve iris structure)
         A.HorizontalFlip(p=p_flip),
-        A.VerticalFlip(p=0.1),  # Rare but can happen
+        # A.VerticalFlip(p=0.1),  # REMOVED: Unrealistic for eye images
         A.Rotate(limit=10, border_mode=cv2.BORDER_REFLECT, p=0.3),
         A.RandomScale(scale_limit=0.1, p=0.3),  # 0.9-1.1 scale
         
@@ -112,8 +112,8 @@ def get_training_transforms(image_size=512, p_flip=0.5):
             A.MotionBlur(blur_limit=3, p=1.0),
         ], p=0.2),
         
-        # Noise
-        A.GaussNoise(var_limit=(10.0, 50.0), mean=0, p=0.1),
+        # Noise (reduced intensity for better training)
+        A.GaussNoise(var_limit=20.0, p=0.1),
         
         # Normalization
         A.Normalize(
@@ -121,7 +121,7 @@ def get_training_transforms(image_size=512, p_flip=0.5):
             std=[0.229, 0.224, 0.225]
         ),
         ToTensorV2()
-    ])
+    ], additional_targets={'boundary': 'mask'})
 
 
 def get_validation_transforms(image_size=512):
@@ -141,7 +141,7 @@ def get_validation_transforms(image_size=512):
             std=[0.229, 0.224, 0.225]
         ),
         ToTensorV2()
-    ])
+    ], additional_targets={'boundary': 'mask'})
 
 
 def create_boundary_mask(mask, dilation_size=3):
@@ -225,23 +225,16 @@ class IrisAugmentation:
         image_tensor = transformed['image']
         mask_tensor = transformed['mask']
         
-        # Apply same transform to boundary (no interpolation)
-        if self.training:
-            # For boundary, we need to apply same geometric transforms
-            # but without color changes
-            boundary_transform = A.Compose([
-                A.HorizontalFlip(p=0.5 if self.training else 0),
-                A.VerticalFlip(p=0.1 if self.training else 0),
-                A.Rotate(limit=10 if self.training else 0, 
-                        border_mode=cv2.BORDER_REFLECT),
-                A.RandomScale(scale_limit=0.1 if self.training else 0),
-                A.Resize(height=self.image_size, width=self.image_size, 
-                        interpolation=cv2.INTER_NEAREST),
-                ToTensorV2()
-            ])
-            boundary_tensor = boundary_transform(image=boundary.astype(np.uint8))['image']
-        else:
-            boundary_tensor = torch.from_numpy(boundary).unsqueeze(0).float()
+        # Apply augmentations with boundary as additional target
+        # This ensures boundary gets SAME transforms as image/mask
+        transformed = self.transform(
+            image=image, 
+            mask=mask,
+            boundary=boundary.astype(np.uint8)
+        )
+        image_tensor = transformed['image']
+        mask_tensor = transformed['mask']
+        boundary_tensor = transformed['boundary']
         
         # Ensure correct tensor shapes and types
         mask_tensor = mask_tensor.long().squeeze()

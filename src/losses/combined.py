@@ -226,6 +226,7 @@ class UnifiedIrisLoss(nn.Module):
 def create_loss_function(
     num_classes: int = 2,
     class_distribution: Optional[torch.Tensor] = None,
+    class_weights: Optional[torch.Tensor] = None,  # Pre-calculated weights (takes precedence)
     loss_type: str = "combined",  # "combined", "focal", "adaptive", "unified"
     device: torch.device = torch.device('cpu'),
     **kwargs
@@ -236,6 +237,7 @@ def create_loss_function(
     Args:
         num_classes: Number of segmentation classes
         class_distribution: Class pixel distribution for weight calculation
+        class_weights: Pre-calculated class weights (takes precedence over distribution)
         loss_type: Type of loss function
         device: Device to place tensors on
         **kwargs: Additional loss function arguments
@@ -244,13 +246,17 @@ def create_loss_function(
         Loss function instance
     """
     
-    # Calculate class weights if distribution provided
-    class_weights = None
-    if class_distribution is not None:
+    # Use pre-calculated weights if provided, otherwise calculate from distribution
+    if class_weights is not None:
+        class_weights = class_weights.to(device)
+        print(f"✅ Using pre-calculated class weights: {class_weights}")
+    elif class_distribution is not None:
         total_pixels = class_distribution.sum()
         class_weights = total_pixels / (num_classes * class_distribution)
         class_weights = class_weights.to(device)
-        print(f"Calculated class weights: {class_weights}")
+        print(f"📊 Calculated class weights from distribution: {class_weights}")
+    else:
+        print("⚠️  No class weights or distribution provided - using unweighted loss")
     
     if loss_type == "combined":
         loss_fn = CombinedIrisLoss(

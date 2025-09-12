@@ -63,9 +63,21 @@ class UbirisDataset(Dataset):
                 mask_path = os.path.join(self.masks_dir, mask_file)
                 
                 if os.path.exists(mask_path):
-                    # Extract subject ID using regex
-                    subject_match = re.search(r'C(\d+)_', img_file)
-                    subject_id = int(subject_match.group(1)) if subject_match else 0
+                    # Extract actual subject ID from filename pattern
+                    # UBIRIS format: C{camera}_S{session}_I{image}.png
+                    # For true subject-aware split, we need session info
+                    # Subject = Camera + Session combination for person independence
+                    camera_match = re.search(r'C(\d+)_', img_file)
+                    session_match = re.search(r'S(\d+)_', img_file)
+                    
+                    if camera_match and session_match:
+                        camera_id = int(camera_match.group(1))
+                        session_id = int(session_match.group(1))
+                        # Create unique subject ID: camera*1000 + session
+                        # This ensures different people don't share IDs
+                        subject_id = camera_id * 1000 + session_id
+                    else:
+                        subject_id = 0
                     
                     all_pairs.append({
                         'image_file': img_file,
@@ -172,8 +184,16 @@ class UbirisDataset(Dataset):
         # Preprocess mask for iris segmentation:
         # Original: 255 = iris, 0 = background + pupil
         # SegFormer expects: 0 = background/pupil, 1 = iris
+        
+        # Debug: Check for anti-aliasing issues
+        unique_vals = np.unique(mask_np)
+        if len(unique_vals) > 2:
+            print(f"⚠️  Mask has {len(unique_vals)} unique values: {unique_vals}")
+            print(f"   File: {mask_path}")
+        
+        # Fix anti-aliasing: use threshold instead of exact match
         processed_mask = np.zeros_like(mask_np, dtype=np.uint8)
-        processed_mask[mask_np == 255] = 1  # Convert iris pixels to class 1
+        processed_mask[mask_np > 127] = 1  # Use threshold to handle anti-aliased pixels
         
         # Use new augmentation pipeline if available
         if hasattr(self, 'augmentation') and self.augmentation is not None:
@@ -188,7 +208,9 @@ class UbirisDataset(Dataset):
                     'mask_path': mask_path
                 }
             except Exception as e:
-                print(f"Augmentation failed, falling back to legacy transforms: {e}")
+                print(f"⚠️  Augmentation failed, falling back to legacy transforms: {e}")
+                print(f"   File: {img_path}")
+                # Important: The fallback path may cause double normalization!
         
         # Fallback to legacy transforms
         processed_mask_pil = Image.fromarray(processed_mask.astype(np.uint8))
