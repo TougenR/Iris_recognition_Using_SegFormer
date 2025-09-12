@@ -1,6 +1,6 @@
 {
   "project_name": "iris-segmentation-ubiris",
-  "run_name": "segformer-b1-enhanced",
+  "run_name": "segformer-b0-enhanced",
   "tags": ["segformer", "iris", "segmentation", "ubiris", "boundary"],
   "seed": 42,
   
@@ -14,7 +14,7 @@
   },
   
   "model": {
-    "model_name": "nvidia/segformer-b1-finetuned-ade-512-512",
+    "model_name": "nvidia/segformer-b0-finetuned-ade-512-512",
     "model_type": "enhanced",
     "num_labels": 2,
     "add_boundary_head": true,
