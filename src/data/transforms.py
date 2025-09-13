@@ -144,6 +144,44 @@ def get_validation_transforms(image_size=512):
     ], additional_targets={'boundary': 'mask'})
 
 
+def get_inference_transform(image_size=512):
+    """
+    Get inference transforms (same as validation but simpler)
+    
+    Args:
+        image_size: Target image size
+    
+    Returns:
+        Transform function for inference
+    """
+    if not ALBUMENTATIONS_AVAILABLE:
+        # Fallback to torchvision
+        return transforms.Compose([
+            transforms.Resize((image_size, image_size)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+    
+    transform = A.Compose([
+        A.Resize(height=image_size, width=image_size, interpolation=cv2.INTER_LINEAR),
+        A.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225]
+        ),
+        ToTensorV2()
+    ])
+    
+    def inference_transform(image):
+        """Apply transform to PIL image"""
+        if isinstance(image, Image.Image):
+            image = np.array(image)
+        
+        transformed = transform(image=image)
+        return transformed['image']
+    
+    return inference_transform
+
+
 def create_boundary_mask(mask, dilation_size=3):
     """
     Create boundary mask for boundary-aware loss

@@ -7,8 +7,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Union, Any
 import cv2
+from PIL import Image
 
 
 def denormalize_image(
@@ -671,5 +672,286 @@ Overall Assessment:
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         plt.close()
         print(f"Results summary figure saved to {save_path}")
+    else:
+        plt.show()
+
+
+def visualize_prediction(
+    image_path: Union[str, Path, Image.Image, np.ndarray],
+    results: Dict[str, Any],
+    save_path: Optional[str] = None,
+    show_confidence: bool = True,
+    show_boundary: bool = True
+) -> None:
+    """
+    Visualize prediction results for a single image
+    
+    Args:
+        image_path: Input image (path, PIL Image, or numpy array)
+        results: Prediction results from inference model
+        save_path: Path to save visualization
+        show_confidence: Whether to show confidence map
+        show_boundary: Whether to show boundary predictions
+    """
+    # Load image if path is provided
+    if isinstance(image_path, (str, Path)):
+        image = np.array(Image.open(image_path).convert('RGB'))
+    elif isinstance(image_path, Image.Image):
+        image = np.array(image_path.convert('RGB'))
+    else:
+        image = image_path
+    
+    # Extract results
+    seg_mask = results['segmentation']['mask']
+    iris_prob = results['segmentation']['iris_probability']
+    confidence = results['segmentation']['confidence']
+    
+    # Determine subplot layout
+    n_cols = 3  # Original, Mask, Overlay
+    if show_confidence:
+        n_cols += 1
+    if show_boundary and 'boundary' in results:
+        n_cols += 1
+    
+    fig, axes = plt.subplots(1, n_cols, figsize=(5 * n_cols, 5))
+    if n_cols == 1:
+        axes = [axes]
+    
+    col_idx = 0
+    
+    # Original image
+    axes[col_idx].imshow(image)
+    axes[col_idx].set_title('Original Image')
+    axes[col_idx].axis('off')
+    col_idx += 1
+    
+    # Segmentation mask
+    axes[col_idx].imshow(seg_mask, cmap='gray')
+    axes[col_idx].set_title('Predicted Mask')
+    axes[col_idx].axis('off')
+    col_idx += 1
+    
+    # Overlay
+    overlay = image.copy().astype(float) / 255.0
+    overlay[seg_mask == 1] = overlay[seg_mask == 1] * 0.7 + np.array([1, 0, 0]) * 0.3
+    axes[col_idx].imshow(overlay)
+    axes[col_idx].set_title('Overlay (Red = Iris)')
+    axes[col_idx].axis('off')
+    col_idx += 1
+    
+    # Confidence map
+    if show_confidence:
+        im = axes[col_idx].imshow(confidence, cmap='viridis', vmin=0, vmax=1)
+        axes[col_idx].set_title('Confidence Map')
+        axes[col_idx].axis('off')
+        plt.colorbar(im, ax=axes[col_idx], fraction=0.046, pad=0.04)
+        col_idx += 1
+    
+    # Boundary prediction
+    if show_boundary and 'boundary' in results:
+        boundary_prob = results['boundary']['boundary_probability']
+        im = axes[col_idx].imshow(boundary_prob, cmap='hot', vmin=0, vmax=1)
+        axes[col_idx].set_title('Boundary Prediction')
+        axes[col_idx].axis('off')
+        plt.colorbar(im, ax=axes[col_idx], fraction=0.046, pad=0.04)
+    
+    plt.tight_layout()
+    
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        print(f"Prediction visualization saved to {save_path}")
+    else:
+        plt.show()
+
+
+def create_overlay_visualization(
+    image: Union[str, Path, Image.Image, np.ndarray],
+    results: Dict[str, Any],
+    iris_color: Tuple[int, int, int] = (255, 0, 0),
+    boundary_color: Tuple[int, int, int] = (0, 255, 255),
+    iris_alpha: float = 0.4,
+    boundary_alpha: float = 0.8,
+    show_boundary: bool = True,
+    boundary_thickness: int = 2
+) -> np.ndarray:
+    """
+    Create overlay visualization of segmentation results on original image
+    
+    Args:
+        image: Original image (path, PIL Image, or numpy array)
+        results: Prediction results from inference model
+        iris_color: RGB color for iris overlay (default: red)
+        boundary_color: RGB color for boundary overlay (default: cyan)
+        iris_alpha: Transparency for iris overlay (0.0-1.0)
+        boundary_alpha: Transparency for boundary overlay (0.0-1.0)
+        show_boundary: Whether to show boundary predictions
+        boundary_thickness: Thickness of boundary lines
+    
+    Returns:
+        Overlay image as numpy array [H, W, 3]
+    """
+    # Load and prepare original image
+    if isinstance(image, (str, Path)):
+        orig_image = np.array(Image.open(image).convert('RGB'))
+    elif isinstance(image, Image.Image):
+        orig_image = np.array(image.convert('RGB'))
+    else:
+        orig_image = image.copy()
+    
+    # Get segmentation results
+    seg_mask = results['segmentation']['mask']
+    
+    # Ensure image and mask have same dimensions
+    if orig_image.shape[:2] != seg_mask.shape:
+        # Resize mask to match image
+        seg_mask_resized = cv2.resize(
+            seg_mask.astype(np.uint8), 
+            (orig_image.shape[1], orig_image.shape[0]), 
+            interpolation=cv2.INTER_NEAREST
+        )
+    else:
+        seg_mask_resized = seg_mask
+    
+    # Create overlay
+    overlay = orig_image.astype(np.float32) / 255.0
+    
+    # Add iris overlay
+    iris_mask = seg_mask_resized == 1
+    if np.any(iris_mask):
+        iris_color_norm = np.array(iris_color) / 255.0
+        
+        # Apply iris overlay with transparency
+        for c in range(3):
+            overlay[iris_mask, c] = (
+                overlay[iris_mask, c] * (1 - iris_alpha) + 
+                iris_color_norm[c] * iris_alpha
+            )
+    
+    # Add boundary overlay if available and requested
+    if show_boundary and 'boundary' in results:
+        boundary_mask = results['boundary']['boundary_mask']
+        
+        # Resize boundary mask if needed
+        if boundary_mask.shape != seg_mask_resized.shape:
+            boundary_mask = cv2.resize(
+                boundary_mask.astype(np.uint8),
+                (orig_image.shape[1], orig_image.shape[0]),
+                interpolation=cv2.INTER_NEAREST
+            )
+        
+        # Dilate boundary for better visibility
+        if boundary_thickness > 1:
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, 
+                                             (boundary_thickness, boundary_thickness))
+            boundary_mask = cv2.dilate(boundary_mask, kernel, iterations=1)
+        
+        # Apply boundary overlay
+        boundary_pixels = boundary_mask > 0
+        if np.any(boundary_pixels):
+            boundary_color_norm = np.array(boundary_color) / 255.0
+            
+            for c in range(3):
+                overlay[boundary_pixels, c] = (
+                    overlay[boundary_pixels, c] * (1 - boundary_alpha) + 
+                    boundary_color_norm[c] * boundary_alpha
+                )
+    
+    # Convert back to uint8
+    overlay = (overlay * 255).astype(np.uint8)
+    
+    return overlay
+
+
+def save_overlay_visualization(
+    image: Union[str, Path, Image.Image, np.ndarray],
+    results: Dict[str, Any],
+    save_path: Union[str, Path],
+    **overlay_kwargs
+) -> None:
+    """
+    Create and save overlay visualization
+    
+    Args:
+        image: Original image
+        results: Prediction results from inference model
+        save_path: Path to save overlay image
+        **overlay_kwargs: Additional arguments for create_overlay_visualization
+    """
+    overlay = create_overlay_visualization(image, results, **overlay_kwargs)
+    
+    save_path = Path(save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    Image.fromarray(overlay).save(save_path)
+    print(f"🎨 Overlay visualization saved to {save_path}")
+
+
+def create_comparison_visualization(
+    image: Union[str, Path, Image.Image, np.ndarray],
+    results: Dict[str, Any],
+    save_path: Optional[str] = None,
+    figsize: Tuple[int, int] = (15, 5)
+) -> None:
+    """
+    Create side-by-side comparison of original, mask, and overlay
+    
+    Args:
+        image: Original image
+        results: Prediction results from inference model
+        save_path: Path to save comparison image
+        figsize: Figure size (width, height)
+    """
+    # Load original image
+    if isinstance(image, (str, Path)):
+        orig_image = np.array(Image.open(image).convert('RGB'))
+        image_title = Path(image).name
+    elif isinstance(image, Image.Image):
+        orig_image = np.array(image.convert('RGB'))
+        image_title = "Input Image"
+    else:
+        orig_image = image.copy()
+        image_title = "Input Image"
+    
+    # Create overlay
+    overlay = create_overlay_visualization(image, results)
+    
+    # Get segmentation mask
+    seg_mask = results['segmentation']['mask']
+    
+    # Create figure
+    fig, axes = plt.subplots(1, 3, figsize=figsize)
+    
+    # Original image
+    axes[0].imshow(orig_image)
+    axes[0].set_title(f'Original Image\n{image_title}', fontsize=12)
+    axes[0].axis('off')
+    
+    # Segmentation mask
+    axes[1].imshow(seg_mask, cmap='gray')
+    axes[1].set_title('Segmentation Mask\n(White=Iris, Black=Background)', fontsize=12)
+    axes[1].axis('off')
+    
+    # Overlay
+    axes[2].imshow(overlay)
+    
+    # Calculate statistics for title
+    iris_coverage = (seg_mask == 1).sum() / seg_mask.size * 100
+    avg_confidence = results['segmentation']['confidence'].mean()
+    
+    overlay_title = f'Overlay Result\nIris: {iris_coverage:.1f}%, Conf: {avg_confidence:.3f}'
+    if 'boundary' in results:
+        boundary_density = results['boundary']['boundary_mask'].sum() / results['boundary']['boundary_mask'].size * 100
+        overlay_title += f'\nBoundary: {boundary_density:.1f}%'
+    
+    axes[2].set_title(overlay_title, fontsize=12)
+    axes[2].axis('off')
+    
+    plt.tight_layout()
+    
+    if save_path:
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        print(f"📊 Comparison visualization saved to {save_path}")
     else:
         plt.show()
