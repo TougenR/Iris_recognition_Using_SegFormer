@@ -1,4 +1,4 @@
-# 🔬 Iris Segmentation with SegFormer
+# Iris Segmentation with SegFormer
 
 **Advanced iris and pupil segmentation using enhanced SegFormer on UBIRIS V2 dataset**
 
@@ -12,57 +12,57 @@ This project implements state-of-the-art iris segmentation using **Enhanced SegF
 
 ### Key Features
 
-- 🔥 **Enhanced SegFormer-B1** with boundary refinement head
-- 🎨 **Advanced augmentation** with aspect-ratio preservation  
-- 🧠 **Subject-aware data splitting** to prevent leakage
-- ⚖️ **Multi-component loss** (CE + Dice + BoundaryIoU)
-- 📊 **Comprehensive evaluation** with medical imaging metrics
-- 🚀 **Production-ready** training pipeline with checkpointing
+- **Enhanced SegFormer-B1** with boundary refinement head
+- **Advanced augmentation** with aspect-ratio preservation  
+- **Subject-aware data splitting** to prevent leakage
+- **Multi-component loss** (CE + Dice + BoundaryIoU)
+- **Comprehensive evaluation** with medical imaging metrics
+- **Production-ready** training pipeline with checkpointing
 
 ## 📁 Project Structure
 
 ```
 iris_recognition/
-├── 📋 configs/
+├── configs/
 │   └── segformer_iris_config.json     # Training configuration
-├── 🔬 src/                           # Main source code
-│   ├── 🤖 models/                    # Model architectures
+├── src/                           # Main source code
+│   ├── models/                    # Model architectures
 │   │   ├── __init__.py
 │   │   ├── segformer.py              # Enhanced SegFormer implementations
 │   │   └── heads.py                  # Boundary & auxiliary heads
-│   ├── 🏋️ training/                  # Training orchestration
+│   ├── training/                  # Training orchestration
 │   │   ├── __init__.py
 │   │   ├── trainer.py                # Main trainer class
 │   │   ├── train.py                  # Training orchestrator
 │   │   └── callbacks.py              # Training callbacks
-│   ├── 📊 evaluation/                # Evaluation & metrics
+│   ├── evaluation/                # Evaluation & metrics
 │   │   ├── __init__.py
 │   │   ├── metrics.py                # Comprehensive metrics
 │   │   └── evaluator.py              # Model evaluation
-│   ├── ⚖️ losses/                    # Loss functions
+│   ├── losses/                    # Loss functions
 │   │   ├── __init__.py
 │   │   ├── dice.py                   # Dice loss variants
 │   │   ├── focal.py                  # Focal loss variants
 │   │   ├── boundary.py               # Boundary-aware losses
 │   │   └── combined.py               # Combined loss orchestrator
-│   ├── 📁 data/                      # Data handling
+│   ├── data/                      # Data handling
 │   │   ├── __init__.py
 │   │   ├── dataset.py                # Enhanced UBIRIS dataset
 │   │   ├── dataloader.py             # DataLoader utilities
 │   │   └── transforms.py             # Advanced augmentations
-│   └── 🛠️ utils/                     # Utilities
+│   └── utils/                     # Utilities
 │       ├── __init__.py
 │       ├── config.py                 # Configuration management
 │       ├── visualization.py          # Visualization tools
 │       └── checkpoint.py             # Checkpoint management
-├── 📊 dataset/                       # UBIRIS V2 dataset
+├── dataset/                       # UBIRIS V2 dataset
 │   ├── images/                       # Eye images (2,250 samples)
 │   └── masks/                        # Segmentation masks
-├── 🚀 train.py                       # Main training entry point
-├── 📋 requirements.txt               # Python dependencies
-├── 📖 DATASET_DOCUMENTATION.md       # Dataset preprocessing guide
-├── 📚 TRAINING_GUIDE.md             # Training guide
-└── 📄 README.md                     # This file
+├── train.py                       # Main training entry point
+├── requirements.txt               # Python dependencies
+├── DATASET_DOCUMENTATION.md       # Dataset preprocessing guide
+├── TRAINING_GUIDE.md             # Training guide
+└── README.md                     # This file
 ```
 
 ## 🚀 Quick Start
@@ -118,7 +118,7 @@ python train.py \
   --wandb
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Model Variants
 
@@ -128,27 +128,22 @@ python train.py \
 | **SegFormer-B1** | 14M | ~9GB | 45 FPS | **Recommended** |
 | SegFormer-B2 | 28M | ~13GB | 30 FPS | Best |
 
-### Training Presets
+### Training
 
-#### 🏃 Fast Training (For Testing)
-```bash
-python train.py --epochs 50 --batch-size 4
-```
-
-#### 🎯 Balanced Training (Recommended)
+#### Training
 ```bash
 python train.py --epochs 160 --batch-size 8 --wandb
 ```
 
-#### 🔥 High-Quality Training
+#### Training (Option 2)
 ```bash
 python train.py --config configs/segformer_iris_config.json --wandb
 # Edit config for: epochs=200, model_type="deep_supervision"
 ```
 
-## 📊 Performance Expectations
+## Performance
 
-### Target Metrics (Oracle's Targets)
+### Target Metrics
 - **Mean IoU**: ≥0.90
 - **Mean Dice**: ≥0.93
 - **Iris IoU**: ≥0.90
@@ -160,7 +155,7 @@ python train.py --config configs/segformer_iris_config.json --wandb
 - **Epoch 20-80**: Steady progress (mIoU: 0.80 → 0.88)
 - **Epoch 80-160**: Fine-tuning (mIoU: 0.88 → 0.92+)
 
-## 🧪 Advanced Features
+## Advanced Features
 
 ### 1. Subject-Aware Data Splitting
 Prevents data leakage by ensuring no subject appears in both train and validation sets.
@@ -197,7 +192,7 @@ Eye-safe augmentations that preserve anatomical consistency.
 - Failed case analysis
 - Augmentation samples
 
-## 💻 Hardware Requirements
+## Hardware Requirements
 
 ### Minimum
 - **GPU**: 6GB VRAM (GTX 1060, RTX 2060)
@@ -217,59 +212,9 @@ Eye-safe augmentations that preserve anatomical consistency.
 - **RAM**: 64GB
 - **Storage**: NVMe SSD
 
-## 🛠️ Troubleshooting
 
-### Common Issues
 
-#### 1. **GPU Out of Memory**
-```bash
-# Reduce batch size
-python train.py --batch-size 4
-
-# Or use smaller model
-# Edit config: "model_name": "nvidia/segformer-b0-finetuned-ade-512-512"
-```
-
-#### 2. **Slow Training**
-```bash
-# Increase workers (match CPU cores)
-# Edit config: "num_workers": 8
-
-# Use mixed precision
-# Edit config: "mixed_precision": true
-```
-
-#### 3. **Poor Convergence**
-```bash
-# Adjust learning rate
-python train.py --lr 1e-5
-
-# Or try focal loss
-# Edit config: "use_focal": true
-```
-
-#### 4. **Import Errors**
-```bash
-# Install missing packages
-pip install -r requirements.txt
-
-# Fix Python path
-export PYTHONPATH="${PYTHONPATH}:$(pwd)/src"
-```
-
-### Debug Mode
-```bash
-# Test dataset loading
-python -m src.test_enhanced_dataset
-
-# Test model creation
-python -c "from src.models import create_model; print('✅ Models OK')"
-
-# Test training setup
-python train.py --epochs 1 --batch-size 2
-```
-
-## 📈 Results & Benchmarks
+## Results & Benchmarks
 
 ### UBIRIS V2 Dataset Results
 | Method | mIoU | Dice | Speed | Memory |
@@ -288,7 +233,7 @@ python train.py --epochs 1 --batch-size 2
 | + Aspect Preserve | +0.012 | Maintained iris shape |
 | **Full Enhanced** | **0.920** | **All improvements** |
 
-## 🔬 Technical Details
+## Technical Details
 
 ### Architecture Enhancements
 1. **Boundary Refinement Head**: 3-layer CNN for sharp boundary prediction
@@ -305,7 +250,7 @@ python train.py --epochs 1 --batch-size 2
 - **Parallel loading**: Multi-worker data loading
 - **Memory pinning**: Faster GPU transfer
 
-## 🚀 Production Deployment
+## Production Deployment
 
 ### Model Export
 ```python
@@ -334,41 +279,9 @@ model = load_pretrained_iris_model(
 prediction = model(preprocessed_image)
 ```
 
-## 📚 Documentation
 
-- **[Dataset Documentation](DATASET_DOCUMENTATION.md)**: Dataset preprocessing details
-- **[Training Guide](TRAINING_GUIDE.md)**: Comprehensive training guide
-- **[Oracle Analysis](docs/oracle_analysis.md)**: Original AI Oracle recommendations
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/improvement`)
-3. Commit changes (`git commit -am 'Add improvement'`)
-4. Push to branch (`git push origin feature/improvement`)
-5. Create Pull Request
-
-## 📜 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- **UBIRIS V2 Dataset**: University of Beira Interior
-- **SegFormer**: Nvidia Research
-- **HuggingFace Transformers**: Model implementations
-- **Oracle AI**: Comprehensive analysis and recommendations
-
-## 📞 Support
-
-For issues and questions:
-1. Check [Troubleshooting](#-troubleshooting) section
-2. Review [TRAINING_GUIDE.md](TRAINING_GUIDE.md)
-3. Open an issue with detailed description
-4. Include training logs and system specifications
-
----
-
-**🎯 Ready to achieve ≥0.90 mIoU iris segmentation!** 🚀
 
 *Built with ❤️ for medical imaging and biometric applications*
