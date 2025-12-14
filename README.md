@@ -283,5 +283,3 @@ prediction = model(preprocessed_image)
 
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-*Built with ❤️ for medical imaging and biometric applications*
